@@ -1,7 +1,7 @@
 //
 //    This file is part of Dire Wolf, an amateur radio packet TNC.
 //
-//    Copyright (C) 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2021, 2023  John Langner, WB2OSZ
+//    Copyright (C) 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2021, 2023, 2025, 2026  John Langner, WB2OSZ
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -2262,7 +2262,7 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 #else
 	      text_color_set(DW_COLOR_ERROR);
 	      dw_printf ("Config file line %d: %s with CM108 is only available when USB Audio GPIO support is enabled.\n", line, otname);
-	      dw_printf ("You must rebuild direwolf with CM108 Audio Adapter GPIO PTT support.\n");
+	      dw_printf ("You must install libudev-dev and rebuild direwolf to have CM108 Audio Adapter GPIO PTT support.\n");
 	      dw_printf ("See Interface Guide for details.\n");
 	      rtfm();
 	      exit (EXIT_FAILURE);
@@ -5740,6 +5740,11 @@ void config_init (char *fname, struct audio_s *p_audio_config,
  *					  Possible to have multiple and they are cumulative.
  */
 
+#if 1	// release 1.9
+// In hindsight, that was a bad idea. Was this ever used?
+// We should not be enablers of bad behavior.
+// Rip out all associated code in release 2.0 ???
+
 	  else if (strcasecmp(t, "NOXID") == 0) {
 
 	    t = split(NULL,0);
@@ -5767,7 +5772,7 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      t = split(NULL,0);
 	    }
 	  }
-
+#endif
 
 /*
  * Invalid command.
