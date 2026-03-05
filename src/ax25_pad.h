@@ -31,6 +31,10 @@
 				/* characters so throw in a couple extra bytes */
 				/* to be safe. */
 
+/* Minimum buffer size for ax25_format_addrs result:                          */
+/* source(12) + ">"(1) + dest(12) + 8*(","(1)+addr(12)+"*"(1)) + ":"(1) + NUL */
+#define AX25_FORMAT_ADDRS_LEN (AX25_MAX_ADDR_LEN + 1 + AX25_MAX_ADDR_LEN + AX25_MAX_REPEATERS * (1 + AX25_MAX_ADDR_LEN + 1) + 1 + 1)
+
 #define AX25_MIN_INFO_LEN 0	/* Previously 1 when considering only APRS. */
 				
 #define AX25_MAX_INFO_LEN 2048	/* Maximum size for APRS. */
@@ -414,7 +418,7 @@ extern double ax25_get_release_time (packet_t this_p);
 extern void ax25_set_modulo (packet_t this_p, int modulo);
 extern int ax25_get_modulo (packet_t this_p);
 
-extern void ax25_format_addrs (packet_t pp, char *);
+extern void ax25_format_addrs (packet_t pp, char *result, size_t result_size);
 extern void ax25_format_via_path (packet_t this_p, char *result, size_t result_size);
 
 extern int ax25_pack (packet_t pp, unsigned char result[AX25_MAX_PACKET_LEN]);

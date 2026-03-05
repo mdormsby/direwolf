@@ -1001,7 +1001,7 @@ static int filt_r (pfstate_t *pf, char *sdist)
 
 	km = ll_distance_km (dlat, dlon, pf->decoded.g_lat, pf->decoded.g_lon);
 
-	sprintf (sdist, "%.2f km", km);
+	snprintf (sdist, 30, "%.2f km", km);
 
 	if (km <= ddist) {
 	  return (1);
