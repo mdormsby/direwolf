@@ -1,0 +1,100 @@
+name: 'beta release'
+
+on:
+  # Automatically run after a successful CI build on push (not pull_request)
+  workflow_run:
+    workflows: ['build direwolf']
+    types: [completed]
+
+  # Allow manual trigger, optionally specifying which CI run to pull artifacts from
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'CI workflow run ID to use for artifacts (leave empty to use triggering run)'
+        required: false
+        default: ''
+      tag:
+        description: 'Tag name for the beta release (leave empty to auto-generate)'
+        required: false
+        default: ''
+
+jobs:
+  beta-release:
+    name: Create Beta Release
+    runs-on: ubuntu-latest
+
+    # For workflow_run events only proceed when the CI build succeeded, was
+    # triggered by a push (not a pull_request), and originated from this same
+    # repository (not a fork), so we don't publish betas for PRs or untrusted
+    # forks running with elevated permissions.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: resolve run id and commit sha
+        id: run_info
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            RUN_ID="${{ github.event.inputs.run_id }}"
+            # Fall back to the current run if no run_id was supplied.
+            # The user would need to supply artifacts separately in that case;
+            # this path is mainly useful when run_id is provided.
+            if [ -z "$RUN_ID" ]; then
+              RUN_ID="${{ github.run_id }}"
+            fi
+            SHA="${{ github.sha }}"
+          else
+            RUN_ID="${{ github.event.workflow_run.id }}"
+            SHA="${{ github.event.workflow_run.head_sha }}"
+          fi
+          echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: checkout at triggering commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.run_info.outputs.sha }}
+
+      - name: compute tag name
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            DATE=$(date -u +'%Y%m%d')
+            SHORT_SHA=$(git rev-parse --short "${{ steps.run_info.outputs.sha }}")
+            TAG="beta-${DATE}-${SHORT_SHA}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: create and push beta tag
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git tag "${{ steps.tag.outputs.tag }}"
+          git push origin "${{ steps.tag.outputs.tag }}"
+
+      - name: download CI artifacts
+        uses: actions/download-artifact@v4
+        with:
+          # Download all per-platform artifacts produced by ci.yml
+          pattern: 'direwolf_*'
+          path: artifacts
+          run-id: ${{ steps.run_info.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          merge-multiple: false
+
+      - name: create beta pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Beta ${{ steps.tag.outputs.tag }}"
+          prerelease: true
+          generate_release_notes: true
+          files: artifacts/**/direwolf-*.zip
